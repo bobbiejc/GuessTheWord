@@ -9,13 +9,21 @@ var http = require('http');
 
 var host = "localhost";
 var port = 3030;
+var cloudant = {
+		 		 url : "https://a552f228-15af-4a9f-b415-2a415cb9b1fd-bluemix:8d68c915bcd7c99e35dd9a4cf589f4e6860a27b92c829273eac940c8a186136c@a552f228-15af-4a9f-b415-2a415cb9b1fd-bluemix.cloudant.com"	 		 
+};
 
 if (process.env.hasOwnProperty("VCAP_SERVICES")) {
   // Running on Bluemix. Parse out the port and host that we've been assigned.
   var env = JSON.parse(process.env.VCAP_SERVICES);
   var host = process.env.VCAP_APP_HOST;
   var port = process.env.VCAP_APP_PORT;	
+  
+  // Also parse out Cloudant settings.
+  cloudant = env['cloudantNoSQLDB'][0].credentials;
 }
+var nano = require('nano')(cloudant.url);
+var db = nano.db.use('guess_the_word_hiscores');
 
 // Set path to Jade template directory
 app.set('views', __dirname + '/views');
@@ -44,6 +52,30 @@ app.get('/', function(req, res){
 app.get('/play', function(req, res){
 	res.render('main.jade', {title: 'Guess the Word'});
     });
+    
+app.get('/hiscores', function(request, response) {
+  db.view('top_scores', 'top_scores_index', function(err, body) {
+  if (!err) {
+    var scores = [];
+      body.rows.forEach(function(doc) {
+        scores.push(doc.value);		      
+      });
+      response.send(JSON.stringify(scores));
+    }
+  });
+});
+
+app.get('/save_score', function(request, response) {
+  var name = request.query.name;
+  var score = request.query.score;
+
+  var scoreRecord = { 'name': name, 'score' : parseInt(score), 'date': new Date() };
+  db.insert(scoreRecord, function(err, body, header) {
+    if (!err) {       
+      response.send('Successfully added one score to the DB');
+    }
+  });
+});    
 
 var server = app.listen(port, function() {
 	console.log('Server running on port %d on host %s', server.address().port, host);
