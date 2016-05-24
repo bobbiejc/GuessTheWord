@@ -2,6 +2,7 @@
  * Hiscores
  */
 
+/*eslint-env jquery */
 function createTableRow(name, score, date) {
   var dateObj = new Date(date);
   var formattedDate = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString();
